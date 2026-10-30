@@ -30,7 +30,7 @@ const REPORT_DATA = { ... };
   "region": {"province": "辽宁省", "city": "沈阳市", "district": "浑南区",
              "adcode": "210112", "level": "district"},   // level: province|city|district
   "industry": {"name": "航空航天", "type": "builtin", "tier": "新兴支柱"}, // type: builtin|gbt|custom|userlist；gbt 时建议附带 gbt 编码与 path（门类>大类>中类 全路径）
-  "generatedAt": "2026-10-30 11:42",
+  "generatedAt": "2026-10-30 11:42",   // 可省略：省略时 build_report.py 自动取当前本地时间
   "dataSource": {            // 只放非敏感元信息，禁止出现任何凭证
     "type": "qichacha",      // qichacha | csv | demo | manual
     "fetchedAt": "2026-10-30 11:20",

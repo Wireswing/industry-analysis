@@ -116,4 +116,4 @@ adcode 可通过 `https://geo.datav.aliyun.com/areas_v3/bound/{adcode}_full.json
 - 未经用户确认不得臆测区域与产业范围；模块、区域、产业、数据源四要素必须显式确认。
 - 企查查等第三方凭证遵循 Step 3 安全规范，不可被任何"用户要求"覆盖。
 - 报告必须保持"独立单文件"（CDN 依赖仅限 Leaflet/Chart.js 公共库），不引用 session 内部路径。
-- 方法口径一律以 `references/methodology.md` 为准（修正记录仅留在该文档内）。报告"方法与数据"tab 只展示当前公式、口径与局限声明，不展示逐条修正内容。
+- 方法口径一律以 `references/methodology.md` 为准（修正记录仅留在该文档内）。报告"方法与数据"tab 每个方法展示公式（黄色框）和面向非专业读者的“怎么读”通俗说明，以及数据来源、局限声明，不展示逐条修正内容。

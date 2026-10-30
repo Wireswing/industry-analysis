@@ -44,7 +44,7 @@ def main():
         'title': meta_in.get('title', '产业智能分析报告'),
         'region': meta_in.get('region', {}),
         'industry': meta_in.get('industry', {}),
-        'generatedAt': meta_in.get('generatedAt'),
+        'generatedAt': meta_in.get('generatedAt') or __import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M'),
         'dataSource': meta_in.get('dataSource', {'type': 'manual', 'note': '—'}),
         'demo': bool(meta_in.get('demo', False)),
         'modules': [m for m, on in mods.items() if on],
