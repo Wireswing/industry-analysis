@@ -683,7 +683,7 @@ function renderVitalityTab(){
   el.innerHTML=
   '<div class="chart-grid">'+
     '<div class="chart-box"><div class="chart-title">产业活力指数（Top10）'+
-    '<span class="tip" data-tip="活力='+V.weights[0]+'%新设率+'+V.weights[1]+'%资本强度(log归一)+'+V.weights[2]+'%集群密度&#10;资本强度采用log变换后归一化（修正极值敏感）">ⓘ</span></div>'+
+    '<span class="tip" data-tip="活力='+V.weights[0]+'%新设率+'+V.weights[1]+'%资本强度(log归一)+'+V.weights[2]+'%集群密度&#10;资本强度采用log变换后归一化以降低极值影响">ⓘ</span></div>'+
     '<div class="chart-wrap"><canvas id="cvVitality"></canvas></div></div>'+
     '<div class="chart-box"><div class="chart-title">企业年龄分布（生命周期）</div>'+
     '<div class="chart-wrap"><canvas id="cvLife"></canvas></div></div>'+
@@ -770,7 +770,7 @@ function renderGridTab(){
   if(!G||!G.items||!G.items.length){el.innerHTML='<div class="note">本次分析未开启网格模块或无有效数据。</div>';return;}
   el.innerHTML=
   '<div class="chart-box full" style="margin-bottom:10px;"><div class="chart-title">TOP网格各维度得分（网格 '+G.sizeM+'m）'+
-  '<span class="tip" data-tip="得分=0.30交通+0.30人才+0.25集聚+0.15商业&#10;（修正：移除恒定值的用地维度并重标权重；原版本的目标类型选择未接入计算，已移除）">ⓘ</span></div>'+
+  '<span class="tip" data-tip="得分=0.30交通+0.30人才+0.25集聚+0.15商业">ⓘ</span></div>'+
   '<div class="chart-wrap" style="height:220px;"><canvas id="cvGrid"></canvas></div></div>'+
   '<table><thead><tr><th>排名</th><th>中心坐标</th><th>综合得分</th><th>交通</th><th>人才</th><th>集聚</th><th>商业</th><th>企业数</th><th>评级</th></tr></thead>'+
   '<tbody>'+G.items.slice(0,10).map((g,i)=>
@@ -803,7 +803,7 @@ function renderChainTab(){
   el.innerHTML=
   '<div class="chart-grid">'+
     '<div class="chart-box"><div class="chart-title">链条环节覆盖'+
-    '<span class="tip" data-tip="环节得分=0.45数量分(log)+0.35资本分+0.20龙头分&#10;GBT编码映射优先、关键词命中率归一化（修正双重计分与词库规模偏置）">ⓘ</span></div>'+
+    '<span class="tip" data-tip="环节得分=0.45数量分(log)+0.35资本分+0.20龙头分&#10;GBT编码映射优先、关键词命中率归一化">ⓘ</span></div>'+
     '<div class="chart-wrap"><canvas id="cvChain"></canvas></div></div>'+
     '<div class="chart-box"><div class="chart-title">产业链完整性雷达</div>'+
     '<div class="chart-wrap"><canvas id="cvChainR"></canvas></div></div>'+
@@ -846,7 +846,7 @@ function renderResTab(){
   el.innerHTML=
   '<div class="chart-grid">'+
     '<div class="chart-box"><div class="chart-title">集中度对比（双口径 + 均匀参照）'+
-    '<span class="tip" data-tip="HHI=Σ(份额²)；同时输出企业数口径与资本口径&#10;均匀参照=1/类别数（k类完全均匀时的HHI）&#10;CR4=前4家注册资本占比&#10;（修正：不再套用市场份额口径的0.10/0.18绝对阈值）">ⓘ</span></div>'+
+    '<span class="tip" data-tip="HHI=Σ(份额²)；同时输出企业数口径与资本口径&#10;均匀参照=1/类别数（k类完全均匀时的HHI）&#10;CR4=前4家注册资本占比">ⓘ</span></div>'+
     '<div class="chart-wrap"><canvas id="cvHHI"></canvas></div></div>'+
     '<div class="chart-box"><div class="chart-title">规模结构</div>'+
     '<div class="chart-wrap"><canvas id="cvScale"></canvas></div></div>'+
@@ -885,31 +885,31 @@ function renderMethods(){
   const el=$('tMethods'); const ds=META.dataSource||{};
   const levelName={province:'省级（边界显示地市）',city:'市级（边界显示区县）',district:'区县级（边界显示街道/乡镇）'}[(META.region||{}).level]||'';
   el.innerHTML=
-  '<div class="method-card"><h4>① 空间聚类（DBSCAN，投影坐标修正）</h4>'+
+  '<div class="method-card"><h4>① 空间聚类（DBSCAN）</h4>'+
   '<p>自动发现企业高密度聚集区域，识别噪声点（孤立企业）。聚类后按企业数降序统一编号 C1…Cn，集群以"质心所在区县·主导产业"自动命名，地图仅在每个集群质心放置一个编号徽章。</p>'+
   '<div class="formula">DBSCAN(eps='+CONFIG.dbscan.eps+'m, minPts='+CONFIG.dbscan.minPts+')\n坐标先做等距圆柱投影（x=lng·111320·cosφ₀, y=lat·110574），距离以米计算</div>'+
-  '<div class="fix-note">✔ 修正：原版以经纬度"度"直接计算欧氏距离，东西向距离被高估约25%（中纬度），本报告已按米制投影重算；原版给每个企业点叠加编号导致重叠，本报告改为质心单一编号。</div></div>'+
+  '</div>'+
   '<div class="method-card"><h4>② 集群象限（实力 × 潜力）</h4>'+
   '<div class="formula">实力 = 0.40×规模分 + 0.35×资本强度 + 0.25×大中型占比\n潜力 = 0.50×新设占比 + 0.30×新设资本强度 + 0.20×密度(log(1+n)/log(1+n_max))\n切割：'+((A.quadrantCut||{}).mode||'中位数')+'（'+((A.quadrantCut||{}).nClusters||0)+'个集群）</div>'+
-  '<div class="fix-note">✔ 修正：密度项由 min(1,n/10)（≥10家即满分）改为对数尺度；集群数&lt;4时改用均值切割并提示稳健性。</div></div>'+
+  '</div>'+
   '<div class="method-card"><h4>③ 产业活力指数</h4>'+
   '<div class="formula">活力 = '+CONFIG.weights[0]+'%×新设率 + '+CONFIG.weights[1]+'%×资本强度(log归一) + '+CONFIG.weights[2]+'%×集群密度\n存活率 = 在业/(在业+注销+吊销)，作为附加负向信号</div>'+
-  '<div class="fix-note">✔ 修正：资本强度改用 log 变换后归一化（注册资本重尾分布下 min-max 受极值压扁）；年龄由成立日期统一换算，缺失值剔除并披露缺失率。</div></div>'+
+  '</div>'+
   '<div class="method-card"><h4>④ 区位商 LQ</h4>'+
   '<div class="formula">LQ = (本地产业占比) / (基准区产业占比)\n>1.25 显著优势 | 0.75~1.25 均衡 | <0.75 相对薄弱；类别 n&lt;30 标注小样本</div>'+
-  '<div class="fix-note">✔ 修正：无基准时不再以"均匀分布"兜底硬算（结果不可解释），降级为本地结构占比展示'+(A.lq&&A.lq.mode==='builtin'?'；本报告使用内置近似基准，建议替换为省级精确基准':'')+'。</div></div>'+
+  (A.lq&&A.lq.mode==='builtin'?'<div class="fix-note">注：本报告使用内置近似基准，建议替换为省级精确基准。</div>':'')+'</div>'+
   '<div class="method-card"><h4>⑤ 选址网格适宜性</h4>'+
   '<div class="formula">得分 = 0.30×交通 + 0.30×人才 + 0.25×集聚 + 0.15×商业（网格 '+CONFIG.gridSizeM+'m）</div>'+
-  '<div class="fix-note">✔ 修正：移除恒为0.5的"用地条件"维度（原15%权重不改变任何排序）并重标权重；移除未接入计算的"评估目标"选项；网格-企业匹配改为一遍分桶。</div></div>'+
+  '</div>'+
   '<div class="method-card"><h4>⑥ 产业链诊断</h4>'+
   '<div class="formula">环节得分 = 0.45×数量分(log) + 0.35×资本分 + 0.20×龙头分\n匹配：GBT 代码映射优先，关键词命中率按环节词库规模归一化</div>'+
-  '<div class="fix-note">✔ 修正：关键词得分原按绝对命中数计分，对词库大的环节有偏，已归一化；"环节存在性"与数量分强相关的双重计分已合并。</div></div>'+
+  '</div>'+
   '<div class="method-card"><h4>⑦ 产业韧性（HHI 双口径 + CR4）</h4>'+
   '<div class="formula">HHI = Σ(份额²)，同时输出企业数口径与资本口径\n均匀参照 = 1/k（k个类别完全均匀时的HHI）；CR4 = 前4家资本占比</div>'+
-  '<div class="fix-note">✔ 修正：原版仅用企业数份额并套用市场份额口径的0.10/0.18阈值，语义错位；本报告以均匀参照线的倍数解读，并补充 CR4。</div></div>'+
+  '</div>'+
   '<div class="method-card"><h4>⑧ 空间自相关（Moran\'s I，辅助）</h4>'+
   '<div class="formula">'+(A.moransI?('I = '+A.moransI.value.toFixed(3)+'，置换检验 p = '+A.moransI.p+'（'+A.moransI.note+'）'):'I = Σwᵢⱼ(xᵢ-x̄)(xⱼ-x̄) / Σ(xᵢ-x̄)²，k近邻行标准化，置换检验')+'</div>'+
-  '<div class="fix-note">✔ 修正：检验对象为 log 注册资本的空间自相关；全样本/网格聚合计算（原版取前500家非随机抽样且无显著性检验）。</div></div>'+
+  '</div>'+
   '<div class="method-card"><h4>📋 数据来源与口径</h4>'+
   '<table><tbody>'+
   '<tr><td>分析区域</td><td>'+((META.region||{}).province||'')+' '+((META.region||{}).city||'')+' '+((META.region||{}).district||'')+'（adcode '+((META.region||{}).adcode||'-')+'，'+levelName+'）</td></tr>'+
