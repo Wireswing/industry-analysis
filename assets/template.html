@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>产业智能分析报告</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1c2230;--border:#21262d;--border2:#30363d;
+  --accent:#58a6ff;--accent2:#3fb950;--warn:#d29922;--danger:#f85149;
+  --purple:#bc8cff;--orange:#f0883e;
+  --text:#c9d1d9;--muted:#8b949e;--dim:#484f58;
+  --mono:'JetBrains Mono','Fira Code','Consolas',monospace;
+  --sans:'Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;line-height:1.6;padding:12px;min-height:100vh;}
+
+.header{background:linear-gradient(135deg,#0d1b2a 0%,#1a2744 40%,#0d2137 100%);border:1px solid #1d3a5e;border-radius:12px;padding:16px 24px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.header-title{font-size:20px;font-weight:700;color:#fff;letter-spacing:.02em;}
+.header-sub{font-size:11px;color:#7aa2c8;margin-top:3px;}
+.badges{display:flex;gap:8px;flex-wrap:wrap;}
+.badge{padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.b-region{background:rgba(88,166,255,.15);color:#58a6ff;border:1px solid rgba(88,166,255,.3);}
+.b-ind{background:rgba(188,140,255,.15);color:#bc8cff;border:1px solid rgba(188,140,255,.3);}
+.b-data{background:rgba(63,185,80,.15);color:#3fb950;border:1px solid rgba(63,185,80,.3);}
+.b-demo{background:rgba(248,81,73,.15);color:#f85149;border:1px solid rgba(248,81,73,.35);}
+
+.warnbar{background:rgba(210,153,34,.08);border:1px solid rgba(210,153,34,.35);border-left:3px solid var(--warn);border-radius:8px;padding:8px 14px;margin-bottom:10px;font-size:12px;color:var(--warn);display:none;}
+
+.main{display:flex;flex-direction:column;gap:12px;}
+.panel-title{font-size:12px;font-weight:700;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:6px;}
+
+.map-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;}
+.map-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.map-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--muted);}
+.map-controls label{display:flex;align-items:center;gap:4px;cursor:pointer;}
+.map-container{width:100%;height:62vh;min-height:420px;border-radius:8px;overflow:hidden;border:1px solid var(--border2);background:#0a0e14;}
+#map{width:100%;height:100%;}
+.map-legend{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);}
+.legend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.leaflet-container{background:#0a0e14;font-family:var(--sans);}
+.leaflet-tooltip{background:#1a2744;border:1px solid var(--accent);color:var(--text);font-size:11px;}
+.leaflet-tooltip-top:before{border-top-color:var(--accent);}
+.cluster-label{background:transparent!important;border:none!important;box-shadow:none!important;}
+
+.tabs{background:var(--surface);border:1px solid var(--border);border-radius:10px;display:flex;flex-direction:column;overflow:hidden;}
+.tab-nav{display:flex;gap:4px;padding:10px 14px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.tab-btn{padding:7px 12px;background:transparent;border:none;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;border-radius:6px 6px 0 0;white-space:nowrap;}
+.tab-btn:hover{color:var(--text);background:rgba(255,255,255,.04);}
+.tab-btn.active{color:var(--accent);background:rgba(88,166,255,.1);border-bottom:2px solid var(--accent);}
+.tab-content{display:none;padding:14px;}
+.tab-content.active{display:block;}
+
+table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px;}
+th{background:rgba(88,166,255,.1);color:var(--accent);font-weight:600;text-align:left;padding:8px 10px;white-space:nowrap;}
+td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.025);}
+.tag{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px;}
+.kpi{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;}
+.kpi .v{font-size:20px;font-weight:700;color:var(--accent);word-break:break-all;}
+.kpi .v.green{color:var(--accent2);} .kpi .v.orange{color:var(--warn);} .kpi .v.red{color:var(--danger);}
+.kpi .l{font-size:10px;color:var(--muted);margin-top:2px;}
+
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.chart-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;}
+.chart-box.full{grid-column:1/-1;}
+.chart-title{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;display:flex;align-items:center;gap:5px;}
+.chart-wrap{position:relative;height:260px;}
+canvas{max-width:100%;}
+
+.ai-block{background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:14px;margin-top:6px;}
+.ai-block h4{font-size:12px;color:var(--purple);margin-bottom:8px;}
+.ai-block p{font-size:12px;color:var(--text);line-height:1.8;margin-bottom:8px;}
+.ai-block ol,.ai-block ul{padding-left:20px;font-size:12px;color:var(--text);line-height:1.9;}
+.ai-block li{margin-bottom:4px;}
+.tip{position:relative;cursor:help;}
+.tip::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a2744;color:var(--text);border:1px solid var(--accent);padding:8px 12px;border-radius:8px;font-size:11px;white-space:pre-wrap;max-width:280px;width:max-content;z-index:9999;pointer-events:none;opacity:0;transition:opacity .2s;line-height:1.5;}
+.tip:hover::after{opacity:1;}
+.method-card{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:12px;}
+.method-card h4{color:var(--accent);font-size:13px;margin-bottom:6px;}
+.method-card p{color:var(--muted);font-size:12px;line-height:1.7;margin-bottom:6px;}
+.method-card .formula{font-family:var(--mono);font-size:11px;color:var(--warn);background:rgba(210,153,34,.08);padding:8px 12px;border-radius:6px;border-left:3px solid var(--warn);margin:6px 0;white-space:pre-wrap;}
+.fix-note{font-size:11px;color:var(--purple);margin-top:4px;}
+.note{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.7;}
+.rowlink{cursor:pointer;}
+.rowlink td:first-child{color:var(--accent);text-decoration:underline dotted;}
+.rowlink.hl td{background:rgba(88,166,255,.12)!important;}
+.gap-box{font-size:12px;line-height:1.9;}
+.gap-box .miss{color:var(--danger);} .gap-box .str{color:var(--accent2);}
+
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+@media(max-width:1100px){.chart-grid{grid-template-columns:1fr;}}
+@media print{
+  body{background:#fff;padding:0;}
+  .tab-content{display:block!important;}
+  .map-container{height:420px;min-height:420px;}
+  .chart-wrap{height:230px;}
+  .warnbar{display:none!important;}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title" id="hTitle">产业智能分析报告</div>
+    <div class="header-sub" id="hSub"></div>
+  </div>
+  <div class="badges" id="hBadges"></div>
+</div>
+<div class="warnbar" id="warnBar"></div>
+
+<div class="main">
+
+  <div class="map-wrap">
+    <div class="map-hdr">
+      <div class="panel-title">📍 企业空间分布（悬停查看企业 · 拖拽/缩放）</div>
+      <div class="map-controls">
+        <label><input type="checkbox" id="chkBoundary" checked> 行政边界</label>
+        <label><input type="checkbox" id="chkBadges" checked> 集群标号</label>
+        <label><input type="checkbox" id="chkPoi"> POI设施</label>
+        <select id="selColor" style="width:auto;padding:3px 6px;font-size:11px;">
+          <option value="cluster">按集群着色</option>
+          <option value="industry">按产业着色</option>
+          <option value="scale">按规模着色</option>
+          <option value="capital">按资本着色</option>
+        </select>
+        <select id="selBasemap" style="width:auto;padding:3px 6px;font-size:11px;">
+          <option value="amap-dark">高德·深色</option>
+          <option value="amap-light">高德·浅色</option>
+          <option value="cartodark">Carto·深色</option>
+          <option value="osm">OSM</option>
+        </select>
+        <button class="tag" style="cursor:pointer;border:1px solid var(--border2);background:var(--surface2);color:var(--muted);" onclick="fitView()">⤢ 复位视野</button>
+      </div>
+    </div>
+    <div class="map-container"><div id="map"></div></div>
+    <div class="map-legend" id="mapLegend"></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab-nav" id="tabNav"></div>
+    <div id="tabContents"></div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  注入块：生成器替换 START ~ END 标记之间的整段（含标记行）
+//  （以下为演示数据，报告头部自动显示"演示数据"徽章）
+// ═══════════════════════════════════════════════════════════════
+// __INJECTION_START__
+const META = {
+  title:"沈阳市 · 航空航天产业分析报告（演示）",
+  region:{province:"辽宁省",city:"沈阳市",district:"",adcode:"210100",level:"city"},
+  industry:{name:"航空航天",type:"builtin",tier:"新兴支柱"},
+  generatedAt:"2026-10-30 11:45",
+  dataSource:{type:"demo",fetchedAt:"",keywords:[],total:60,afterDedup:60,coordCoverage:1,
+    statusDist:{"在业":60},note:"模板内置演示数据（虚构企业，仅用于功能预览）"},
+  demo:true,
+  modules:["map","cluster","vitality","lq","grid","chain","resilience","ai"],
+  ai:{
+    overview:"沈阳市航空航天产业呈现\"整机牵引、配套集聚\"的格局：60家在业样本企业中，36家集中于航空航天配套设备环节，沿浑南、大东、铁西、沈北形成4个空间集群。浑南·航空配套集群（C1）实力与潜力兼备，为明星集群；大东·整机制造集群实力雄厚但新设动能偏弱；铁西·零部件集群新生活力突出；沈北·MRO集群规模尚小。产业链整机与零部件环节覆盖较厚，机载设备与航电环节存在缺口。",
+    suggestions:[
+      "围绕C1浑南·航空配套集群建设专业化配套园区，优先补齐机载设备与航电短板环节，面向主机厂实施定向招商。",
+      "对C2大东·整机制造集群推进\"存量焕新\"：以数字化总装产线改造与产能爬坡为抓手，带动集群新设企业占比回升。",
+      "依托C3铁西·零部件集群的土地与工人存量优势，承接锻造、热表处理等外迁环节，形成零部件—材料加工走廊。",
+      "在沈北布局MRO产业集群二期，联动主机厂与机场口岸资源发展发动机深度维修与航材循环利用。",
+      "建立\"整机—系统—零部件\"三级供应链台账，按产业链诊断结果对缺口环节给予落地奖励与人才定向培养。"
+    ],
+    risks:[
+      "资本口径 HHI 约为均匀参照的2.7倍，配套环节独大：整机订单波动将沿供应链快速传导，需培育第二增长曲线。",
+      "航空发动机与整机制造环节样本量小（n<10），相关 LQ 与活力结论的统计稳健性有限，建议扩样复核。"
+    ],
+    clusters:{
+      C1:"浑南配套集群覆盖结构件、钛合金铸造、航电集成等高价值环节，龙头企业资本强度高，近三年新设占比22%，具备\"强链补链\"条件。",
+      C2:"大东整机制造集群以总装为核心，资本密集但企业年龄偏大、新设率仅14%，需注入配套中小企业活力。",
+      C3:"铁西零部件集群以锻件、成型、表面处理等工艺配套为主，新设占比25%，处于产能承接期。",
+      C4:"沈北MRO集群围绕发动机维修与航材保障，规模尚小（9家），适合作为专业化培育方向。"
+    }
+  },
+  analysis:{
+    clusters:[
+      {id:"C1",label:"浑南·航空配套集群",n:18,centerLat:41.7122,centerLng:123.4525,domInd:"航空航天",domSub:"航空航天配套设备",strength:.72,potential:.58,quadrant:"★明星",avgCap:3268,newR:.22,largeR:.33,district:"浑南区"},
+      {id:"C2",label:"大东·整机制造集群",n:14,centerLat:41.806,centerLng:123.468,domInd:"航空航天",domSub:"整机制造",strength:.64,potential:.31,quadrant:"◆成熟",avgCap:8557,newR:.14,largeR:.43,district:"大东区"},
+      {id:"C3",label:"铁西·航空零部件集群",n:12,centerLat:41.7955,centerLng:123.345,domInd:"航空航天",domSub:"航空航天配套设备",strength:.38,potential:.52,quadrant:"▲潜力",avgCap:3110,newR:.25,largeR:.25,district:"铁西区"},
+      {id:"C4",label:"沈北·航空维修MRO集群",n:9,centerLat:41.912,centerLng:123.428,domInd:"航空航天",domSub:"维修MRO",strength:.22,potential:.2,quadrant:"▽弱势",avgCap:3800,newR:.11,largeR:.22,district:"沈北新区"}
+    ],
+    quadrantCut:{mode:"median",x:.51,y:.415,nClusters:4},
+    moransI:{value:.19,p:.02,n:60,note:"基于log注册资本，k近邻(k=8)行标准化权重，置换检验199次"},
+    vitality:{
+      items:[
+        {cat:"航空航天配套设备",n:36,newR:.17,avgCap:3056,capNorm:.55,clusterShare:.89,vitality:.48,avgAge:8.3,trend:"稳增长"},
+        {cat:"整机制造",n:7,newR:.29,avgCap:9743,capNorm:.95,clusterShare:1,vitality:.59,avgAge:9.9,trend:"快增长"},
+        {cat:"维修MRO",n:9,newR:.22,avgCap:3800,capNorm:.72,clusterShare:.78,vitality:.51,avgAge:5.8,trend:"快增长"},
+        {cat:"航空发动机",n:2,newR:.5,avgCap:11000,capNorm:1,clusterShare:1,vitality:.68,avgAge:8.5,trend:"快增长",small:true},
+        {cat:"无人机",n:2,newR:1,avgCap:690,capNorm:.28,clusterShare:0,vitality:.42,avgAge:1.5,trend:"快增长",small:true},
+        {cat:"通用航空服务",n:2,newR:0,avgCap:1700,capNorm:.38,clusterShare:0,vitality:.13,avgAge:4.5,trend:"缓慢",small:true}
+      ],
+      lifecycle:[17,22,14,7],weights:[40,35,25],survivalRate:.94
+    },
+    lq:{mode:"builtin",benchmarkName:"内置参考基准（近似）",items:[
+      {k:"航空发动机",n:2,localShare:.033,bmShare:.005,lq:6.1,level:"显著优势",small:true},
+      {k:"整机制造",n:7,localShare:.117,bmShare:.028,lq:4.2,level:"显著优势",small:false},
+      {k:"航空航天配套设备",n:36,localShare:.6,bmShare:.27,lq:2.2,level:"显著优势",small:false},
+      {k:"维修MRO",n:9,localShare:.15,bmShare:.083,lq:1.8,level:"显著优势",small:false},
+      {k:"通用航空服务",n:2,localShare:.033,bmShare:.039,lq:.85,level:"均衡",small:true},
+      {k:"无人机",n:2,localShare:.033,bmShare:.083,lq:.4,level:"相对薄弱",small:true}
+    ]},
+    chain:{links:[
+      {name:"上游材料",n:4,capital:5200,large:0,score:.21},
+      {name:"零部件/配件",n:23,capital:18600,large:5,score:.68},
+      {name:"整机制造",n:7,capital:68200,large:4,score:.92},
+      {name:"航空发动机",n:2,capital:22000,large:1,score:.47},
+      {name:"机载设备与航电",n:0,capital:0,large:0,score:0},
+      {name:"维修MRO",n:9,capital:34600,large:3,score:.66},
+      {name:"运营服务",n:3,capital:4100,large:0,score:.25}
+    ],missing:["机载设备与航电"],strong:["整机制造","零部件/配件","维修MRO"]},
+    grid:{sizeM:1000,poiBased:true,items:[
+      {lat:41.7151,lng:123.4435,score:.78,entScore:.95,uniScore:.67,metroScore:.5,comScore:1,grade:"优先选址",n:26},
+      {lat:41.8016,lng:123.4637,score:.72,entScore:.8,uniScore:.67,metroScore:.5,comScore:1,grade:"优先选址",n:21},
+      {lat:41.7999,lng:123.3493,score:.61,entScore:.75,uniScore:.67,metroScore:.5,comScore:.5,grade:"优先选址",n:19},
+      {lat:41.9196,lng:123.4195,score:.52,entScore:.55,uniScore:1,metroScore:.5,comScore:.5,grade:"适宜选址",n:13},
+      {lat:41.7506,lng:123.5396,score:.36,entScore:.2,uniScore:1,metroScore:0,comScore:.5,grade:"适宜选址",n:6},
+      {lat:41.7730,lng:123.6049,score:.31,entScore:.1,uniScore:0,metroScore:0,comScore:.5,grade:"一般",n:3}
+    ],note:"得分=0.30交通+0.30人才+0.25集聚+0.15商业（含演示POI）"},
+    resilience:{hhiCount:.31,hhiCapital:.34,cr4:.38,catCount:8,uniformRef:.125,dom:"航空航天配套设备",domShare:"60.0",
+      scaleCnt:{"大型":5,"中型":14,"小型":34,"微型":3,"未知":4},scaleMissing:.07,
+      conclusion:"资本口径集中度约为均匀参照线（1/8=0.125）的2.7倍，结构上以配套设备环节为主、龙头集中（CR4=38%）。"},
+    data:{total:60,mapped:60,coordValid:60,sampled:false,sampleRate:1,ageMissing:0,statusFiltered:0}
+  },
+  warnings:[]
+};
+const CONFIG = {
+  coordSys:"gcj02", baseMap:"amap-dark", adcode:"210100", showBoundary:true,
+  modules:{map:true,cluster:true,vitality:true,lq:true,grid:true,chain:true,resilience:true,ai:true},
+  dbscan:{eps:800,minPts:5}, weights:[40,35,25], gridSizeM:1000
+};
+const _DEMO_RAW=[
+["示例企业001",41.7251,123.4605,5200,8,"中型","航空航天配套设备","3744","C1"],
+["示例企业002",41.7156,123.4507,12800,15,"大型","航空发动机","3742","C1"],
+["示例企业003",41.7155,123.4513,3600,11,"中型","航空航天配套设备","3744","C1"],
+["示例企业004",41.7014,123.4563,2200,6,"中型","航空航天配套设备","3744","C1"],
+["示例企业005",41.7276,123.4503,860,4,"小型","航空航天配套设备","3744","C1"],
+["示例企业006",41.7130,123.4640,1500,9,"中型","维修MRO","3749","C1"],
+["示例企业007",41.7205,123.4561,680,3,"小型","航空航天配套设备","3744","C1"],
+["示例企业008",41.7056,123.4328,4200,12,"中型","航空航天配套设备","3744","C1"],
+["示例企业009",41.7151,123.4475,9800,7,"大型","航空航天配套设备","3744","C1"],
+["示例企业010",41.6991,123.4457,2400,5,"中型","航空航天配套设备","3744","C1"],
+["示例企业011",41.7222,123.4318,1100,3,"小型","航空航天配套设备","3744","C1"],
+["示例企业012",41.7115,123.4478,2900,10,"中型","航空航天配套设备","3744","C1"],
+["示例企业013",41.6978,123.4520,520,2,"小型","航空航天配套设备","3744","C1"],
+["示例企业014",41.7233,123.4633,1350,2,"小型","智能传感器","4011","C1"],
+["示例企业015",41.7022,123.4438,3100,13,"中型","航空航天配套设备","3744","C1"],
+["示例企业016",41.7102,123.4549,760,4,"小型","航空航天配套设备","3744","C1"],
+["示例企业017",41.7234,123.4667,430,1,"微型","航空航天配套设备","3744","C1"],
+["示例企业018",41.7061,123.4512,900,6,"小型","航空航天配套设备","3744","C1"],
+["示例企业019",41.8171,123.4797,26000,22,"大型","整机制造","3741","C2"],
+["示例企业020",41.7971,123.4607,8600,10,"大型","整机制造","3741","C2"],
+["示例企业021",41.8091,123.4588,14200,18,"大型","整机制造","3741","C2"],
+["示例企业022",41.7927,123.4857,3200,7,"中型","航空航天配套设备","3744","C2"],
+["示例企业023",41.8141,123.4565,5400,9,"中型","整机制造","3741","C2"],
+["示例企业024",41.8186,123.4704,6800,12,"大型","整机制造","3741","C2"],
+["示例企业025",41.8125,123.4807,2100,5,"中型","航空航天配套设备","3744","C2"],
+["示例企业026",41.8047,123.4811,4100,8,"中型","航空航天配套设备","3744","C2"],
+["示例企业027",41.7980,123.4611,2700,6,"中型","整机制造","3741","C2"],
+["示例企业028",41.8153,123.4669,1500,3,"小型","整机制造","3741","C2"],
+["示例企业029",41.7991,123.4509,1900,4,"小型","航空航天配套设备","3744","C2"],
+["示例企业030",41.8278,123.4665,890,2,"小型","航空航天配套设备","3744","C2"],
+["示例企业031",41.7991,123.4430,3600,5,"中型","航空航天配套设备","3744","C2"],
+["示例企业032",41.7915,123.4889,1200,2,"小型","航空航天配套设备","3744","C2"],
+["示例企业033",41.8040,123.3472,2800,9,"中型","航空航天配套设备","3744","C3"],
+["示例企业034",41.7818,123.3378,5100,11,"中型","航空航天配套设备","3744","C3"],
+["示例企业035",41.8127,123.3391,8900,14,"大型","航空航天配套设备","3744","C3"],
+["示例企业036",41.8035,123.3593,3400,12,"中型","航空航天配套设备","3744","C3"],
+["示例企业037",41.7905,123.3356,1600,6,"小型","航空航天配套设备","3744","C3"],
+["示例企业038",41.7920,123.3456,2200,8,"中型","航空航天配套设备","3744","C3"],
+["示例企业039",41.7988,123.3484,2400,4,"小型","航空航天配套设备","3744","C3"],
+["示例企业040",41.7848,123.3274,980,3,"小型","航空航天配套设备","3744","C3"],
+["示例企业041",41.7958,123.3665,1250,5,"小型","航空航天配套设备","3744","C3"],
+["示例企业042",41.7941,123.3316,6400,16,"中型","航空航天配套设备","3744","C3"],
+["示例企业043",41.8016,123.3538,1800,7,"小型","航空航天配套设备","3744","C3"],
+["示例企业044",41.7990,123.3692,760,2,"小型","航空航天配套设备","3744","C3"],
+["示例企业045",41.9102,123.4349,6800,9,"大型","维修MRO","3749","C4"],
+["示例企业046",41.9107,123.4169,4200,6,"中型","维修MRO","3749","C4"],
+["示例企业047",41.9233,123.4160,3100,4,"中型","维修MRO","3749","C4"],
+["示例企业048",41.9108,123.4314,1500,3,"小型","维修MRO","3749","C4"],
+["示例企业049",41.9110,123.4215,890,1,"微型","维修MRO","3749","C4"],
+["示例企业050",41.9019,123.4488,5400,7,"中型","维修MRO","3749","C4"],
+["示例企业051",41.9244,123.4537,2100,2,"小型","维修MRO","3749","C4"],
+["示例企业052",41.9000,123.4078,9200,11,"大型","航空发动机","3742","C4"],
+["示例企业053",41.9206,123.4669,1300,5,"小型","运营服务","3749","C4"],
+["示例企业054",41.7369,123.5507,2100,6,"中型","航空航天配套设备","3744",null],
+["示例企业055",41.8739,123.5874,800,3,"小型","航空航天配套设备","3744",null],
+["示例企业056",41.7065,123.2944,1500,4,"小型","通用航空服务","3749",null],
+["示例企业057",41.8505,123.3235,660,2,"小型","无人机","3745",null],
+["示例企业058",41.6561,123.4276,1900,5,"中型","通用航空服务","3749",null],
+["示例企业059",41.9410,123.4957,3400,2,"小型","卫星与运载火箭","3743",null],
+["示例企业060",41.7794,123.6094,720,1,"微型","无人机","3745",null]
+];
+const _CL_COLORS = {"C1":"#f85149","C2":"#f59e0b","C3":"#3fb950","C4":"#06b6d4"};
+const REPORT_DATA = {
+  enterprises: _DEMO_RAW.map(r=>({name:r[0],lat:r[1],lng:r[2],capital:r[3],age:r[4],scale:r[5],
+    industry:"航空航天",sub:r[6],gbt_code:r[7],status:"在业",cluster:r[8],
+    clusterColor:r[8]?_CL_COLORS[r[8]]:null})),
+  pois:[
+    {name:"示例高校01",lat:41.7438,lng:123.4250,type:"高校"},
+    {name:"示例高校02",lat:41.9150,lng:123.4109,type:"高校"},
+    {name:"示例高校03",lat:41.7894,lng:123.3748,type:"高校"},
+    {name:"示例地铁站01",lat:41.9167,lng:123.4056,type:"地铁站"},
+    {name:"示例地铁站02",lat:41.8016,lng:123.3560,type:"地铁站"},
+    {name:"示例商圈01",lat:41.7088,lng:123.4481,type:"商圈"},
+    {name:"示例商圈02",lat:41.8151,lng:123.4717,type:"商圈"},
+    {name:"示例医院01",lat:41.7949,lng:123.4619,type:"医院"}
+  ],
+  benchmark:null,
+  industryLib:{name:"航空航天",color:"#818cf8",tier:"新兴支柱",
+    subs:{"整机制造":{},"航空发动机":{},"航空航天配套设备":{},"无人机":{},"维修MRO":{},"通用航空服务":{}},
+    chain:[{name:"上游材料",gbt:[],kw:["铝合金","钛合金","复合材料"]},
+      {name:"零部件/配件",gbt:["3744"],kw:["零部件","结构件","标准件"]},
+      {name:"整机制造",gbt:["3741"],kw:["总装","整机","机体"]},
+      {name:"航空发动机",gbt:["3742"],kw:["发动机","传动"]},
+      {name:"机载设备与航电",gbt:["4011"],kw:["航电","机载","仪表"]},
+      {name:"维修MRO",gbt:["3749"],kw:["维修","定检","大修"]},
+      {name:"运营服务",gbt:[],kw:["通航","运营","航材"]}]}
+};
+// __INJECTION_END__
+
+// ═══════════════════════════════════════════════════════════════
+//  模板运行时（生成器不修改以下内容）
+// ═══════════════════════════════════════════════════════════════
+const A = META.analysis || {};
+const st = {map:null,boundary:null,entLayer:null,badgeLayer:null,poiLayer:null,
+  charts:{},colorMode:'cluster',tiles:null,tileErr:0,boundaryOk:false};
+const fmt = n => n==null?'—':Number(n).toLocaleString('zh-CN');
+const $ = id => document.getElementById(id);
+let boundaryNote='';
+
+// ---- 坐标系转换（wgs84/bd09 → gcj02） ----
+function wgs2gcj(lng,lat){
+  const a=6378245.0, ee=0.00669342162296594323;
+  function tLat(x,y){let r=-100+2*x+3*y+0.2*y*y+0.1*x*y+0.2*Math.sqrt(Math.abs(x));
+    r+=(20*Math.sin(6*x*Math.PI)+20*Math.sin(2*x*Math.PI))*2/3;
+    r+=(20*Math.sin(y*Math.PI)+40*Math.sin(y/3*Math.PI))*2/3;
+    r+=(160*Math.sin(y/12*Math.PI)+320*Math.sin(y*Math.PI/30))*2/3;return r;}
+  function tLng(x,y){let r=300+x+2*y+0.1*x*x+0.1*x*y+0.1*Math.sqrt(Math.abs(x));
+    r+=(20*Math.sin(6*x*Math.PI)+20*Math.sin(2*x*Math.PI))*2/3;
+    r+=(20*Math.sin(x*Math.PI)+40*Math.sin(x/3*Math.PI))*2/3;
+    r+=(150*Math.sin(x/12*Math.PI)+300*Math.sin(x/30*Math.PI))*2/3;return r;}
+  let dLat=tLat(lng-105,lat-35), dLng=tLng(lng-105,lat-35);
+  const radLat=lat/180*Math.PI; let magic=1-ee*Math.sin(radLat)*Math.sin(radLat);
+  const sqrtMagic=Math.sqrt(magic);
+  dLat=(dLat*180)/((a*(1-ee))/(magic*sqrtMagic)*Math.PI);
+  dLng=(dLng*180)/(a/sqrtMagic*Math.cos(radLat)*Math.PI);
+  return [lng+dLng, lat+dLat];
+}
+function bd2gcj(lng,lat){
+  const xPI=Math.PI*3000/180;
+  const x=lng-0.0065, y=lat-0.006;
+  const z=Math.sqrt(x*x+y*y)-0.00002*Math.sin(y*xPI);
+  const th=Math.atan2(y,x)-0.000003*Math.cos(x*xPI);
+  return [z*Math.cos(th), z*Math.sin(th)];
+}
+function toGCJ(lat,lng){
+  if(CONFIG.coordSys==='wgs84'){const p=wgs2gcj(lng,lat);return [p[1],p[0]];}
+  if(CONFIG.coordSys==='bd09'){const p=bd2gcj(lng,lat);return [p[1],p[0]];}
+  return [lat,lng];
+}
+
+// ---- 底图 ----
+const BASEMAPS = {
+  'amap-dark':{url:'https://{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
+    sub:['webrd01','webrd02','webrd03','webrd04'],attr:'© 高德地图',max:18},
+  'amap-light':{url:'https://{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}',
+    sub:['webrd01','webrd02','webrd03','webrd04'],attr:'© 高德地图',max:18},
+  'cartodark':{url:'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    sub:['a','b','c','d'],attr:'© CARTO © OpenStreetMap',max:19,retina:true},
+  'osm':{url:'https://tile.openstreetmap.org/{z}/{x}/{y}.png',sub:[],attr:'© OpenStreetMap',max:19}
+};
+const FALLBACK = ['amap-dark','cartodark','osm'];
+function setBasemap(key){
+  if(st.tiles){st.map.removeLayer(st.tiles);st.tiles=null;}
+  const b=BASEMAPS[key]||BASEMAPS['amap-dark'];
+  st.tileErr=0;
+  st.tiles=L.tileLayer(b.url,{subdomains:b.sub,attribution:b.attr,maxZoom:b.max,
+    detectRetina:!!b.retina});
+  st.tiles.on('tileerror',()=>{ st.tileErr++;
+    if(st.tileErr>10 && FALLBACK.length>1){
+      const cur=FALLBACK.indexOf(key);
+      const next=FALLBACK[(cur+1+FALLBACK.length)%FALLBACK.length];
+      if(next!==key){ $('selBasemap').value=next; setBasemap(next); }
+    }});
+  st.tiles.addTo(st.map);
+}
+
+function initMap(){
+  st.map=L.map('map',{zoomControl:true,attributionControl:true});
+  const ents=REPORT_DATA.enterprises||[];
+  const c0=ents.length?toGCJ(ents[0].lat,ents[0].lng):[41.8,123.43];
+  st.map.setView(c0,11);
+  $('selBasemap').value=CONFIG.baseMap;
+  setBasemap(CONFIG.baseMap);
+  st.entLayer=L.layerGroup().addTo(st.map);
+  st.badgeLayer=L.layerGroup().addTo(st.map);
+  st.poiLayer=L.layerGroup();
+  loadBoundary();
+  plotPOIs();
+  plotEnterprises();
+  st.colorMode=(CONFIG.modules.cluster && A.clusters && A.clusters.length)?'cluster':'industry';
+  $('selColor').value=st.colorMode;
+  plotBadges();
+  $('chkBoundary').checked=CONFIG.showBoundary!==false;
+  $('chkBoundary').onchange=e=>{ if(!st.boundary)return;
+    e.target.checked?st.boundary.addTo(st.map):st.map.removeLayer(st.boundary); };
+  $('chkBadges').onchange=()=>plotBadges();
+  $('chkPoi').onchange=e=>{ e.target.checked?st.poiLayer.addTo(st.map):st.map.removeLayer(st.poiLayer); };
+  $('selColor').onchange=e=>{st.colorMode=e.target.value;plotEnterprises();updateLegend();};
+  $('selBasemap').onchange=e=>setBasemap(e.target.value);
+  updateLegend();
+}
+
+function loadBoundary(){
+  const code=CONFIG.adcode;
+  if(!code){boundaryNote='未配置区域 adcode（边界未加载）';return;}
+  fetch('https://geo.datav.aliyun.com/areas_v3/bound/'+code+'_full.json')
+    .then(r=>{if(!r.ok)throw 0;return r.json();})
+    .then(geo=>{
+      if(!st.map.getPane('bnd')){st.map.createPane('bnd');st.map.getPane('bnd').style.zIndex=350;}
+      st.boundary=L.geoJSON(geo,{pane:'bnd',style:{color:'#58a6ff',weight:1.2,fillOpacity:.05,fillColor:'#58a6ff'},
+        onEachFeature:(f,lyr)=>{
+          const nm=f.properties&&f.properties.name;
+          if(nm)lyr.bindTooltip(nm,{sticky:true,direction:'top'});
+        }});
+      if($('chkBoundary').checked) st.boundary.addTo(st.map);
+      st.boundaryOk=true;
+      fitView();
+    })
+    .catch(()=>{boundaryNote='行政边界服务不可达（离线/网络受限），地图仍可正常展示企业分布。';});
+}
+
+function entColor(e,mode){
+  if(mode==='cluster') return e.clusterColor||'#475569';
+  if(mode==='industry') return (REPORT_DATA.industryLib&&REPORT_DATA.industryLib.color)||'#818cf8';
+  if(mode==='scale'){const s=(e.scale||'');
+    if(s.includes('大'))return '#f85149'; if(s.includes('中'))return '#f59e0b';
+    if(s.includes('小'))return '#3fb950'; return '#58a6ff';}
+  if(mode==='capital'){const c=e.capital||0;
+    if(c>5000)return '#f85149'; if(c>1000)return '#f59e0b';
+    if(c>100)return '#3fb950'; return '#475569';}
+  return '#58a6ff';
+}
+
+function plotEnterprises(){
+  st.entLayer.clearLayers();
+  const ents=REPORT_DATA.enterprises||[];
+  ents.forEach(e=>{
+    if(e.lat==null||e.lng==null||isNaN(e.lat)||isNaN(e.lng))return;
+    const col=entColor(e,st.colorMode);
+    const m=L.circleMarker(toGCJ(e.lat,e.lng),{radius:4.5,color:col,fillColor:col,
+      fillOpacity:.85,weight:1.2});
+    m.bindTooltip('<b>'+(e.name||'企业')+'</b><br>子产业：'+(e.sub||'-')+
+      '<br>注册资本：'+(e.capital>0?fmt(e.capital)+' 万':'-')+
+      '<br>成立年限：'+(e.age>0?e.age+' 年':'-')+
+      '<br>规模：'+(e.scale||'-')+(e.cluster?'<br>所属集群：'+e.cluster:''),
+      {sticky:true,direction:'top',opacity:.95});
+    st.entLayer.addLayer(m);
+  });
+}
+function plotPOIs(){
+  st.poiLayer.clearLayers();
+  (REPORT_DATA.pois||[]).forEach(p=>{
+    if(p.lat==null||isNaN(p.lat))return;
+    const col={高校:'#58a6ff',地铁站:'#f59e0b',医院:'#ec4899',商圈:'#f97316'}[p.type]||'#3fb950';
+    const m=L.circleMarker(toGCJ(p.lat,p.lng),{radius:5,color:col,fillColor:col,fillOpacity:.85,weight:1.5});
+    m.bindTooltip('<b>'+(p.name||p.type)+'</b><br>类型：'+p.type,{sticky:true,direction:'top'});
+    st.poiLayer.addLayer(m);
+  });
+}
+function plotBadges(){
+  st.badgeLayer.clearLayers();
+  if(!CONFIG.modules.cluster||!$('chkBadges').checked)return;
+  (A.clusters||[]).forEach(cl=>{
+    const col=clusterColorOf(cl.id);
+    const icon=L.divIcon({className:'cluster-label',iconSize:[70,30],iconAnchor:[35,15],
+      html:'<div style="background:rgba(0,0,0,.85);border:2px solid '+col+';color:#fff;'+
+        'font-size:11px;font-weight:700;padding:2px 9px;border-radius:13px;white-space:nowrap;'+
+        'display:flex;align-items:center;gap:5px;box-shadow:0 2px 8px rgba(0,0,0,.7);">'+
+        '<span>'+cl.id+'</span><span style="color:'+col+';font-weight:800;">·</span>'+
+        '<span style="font-weight:400;opacity:.85;">'+cl.n+'家</span></div>'});
+    const mk=L.marker(toGCJ(cl.centerLat,cl.centerLng),{icon,zIndexOffset:1000});
+    mk.bindTooltip('<b>'+(cl.label||('集群'+cl.id))+'</b><br>'+(cl.domSub||'')+' · '+(cl.quadrant||'')+
+      '<br>实力 '+(cl.strength!=null?cl.strength.toFixed(2):'-')+' / 潜力 '+(cl.potential!=null?cl.potential.toFixed(2):'-'),
+      {direction:'top',opacity:.95});
+    mk.on('click',()=>locateCluster(cl.id));
+    st.badgeLayer.addLayer(mk);
+  });
+}
+function clusterColorOf(id){
+  const e=(REPORT_DATA.enterprises||[]).find(x=>x.cluster===id);
+  return (e&&e.clusterColor)||'#f85149';
+}
+function highlightClusterRow(id){
+  document.querySelectorAll('#clusterTable tr').forEach(tr=>tr.classList.remove('hl'));
+  const tr=document.querySelector('#clusterTable tr[data-cid="'+id+'"]');
+  if(tr){tr.classList.add('hl');tr.scrollIntoView({behavior:'smooth',block:'center'});}
+  switchTab('tCluster');
+}
+function fitView(){
+  const ents=REPORT_DATA.enterprises||[];
+  const pts=ents.filter(e=>e.lat!=null&&!isNaN(e.lat)).map(e=>toGCJ(e.lat,e.lng));
+  if(pts.length){
+    st.map.fitBounds(L.latLngBounds(pts).pad(.08));
+  } else if(st.boundary){try{st.map.fitBounds(st.boundary.getBounds());}catch(e){}}
+}
+function updateLegend(){
+  const leg=$('mapLegend'); const mode=st.colorMode;
+  if(mode==='cluster'){
+    leg.innerHTML=(A.clusters||[]).map(cl=>
+      '<div class="legend-item"><span class="legend-dot" style="background:'+clusterColorOf(cl.id)+
+      ';"></span>'+cl.id+' '+(cl.label||'')+'（'+cl.n+'家）</div>').join('')
+      ||'<div class="legend-item">无集群</div>';
+  } else if(mode==='industry'){
+    leg.innerHTML='<div class="legend-item"><span class="legend-dot" style="background:'+
+      ((REPORT_DATA.industryLib||{}).color||'#818cf8')+';"></span>'+
+      ((REPORT_DATA.industryLib||{}).name||'目标产业')+
+      '<span class="legend-dot" style="background:#475569;margin-left:10px;"></span>其他/未分类</div>';
+  } else if(mode==='scale'){
+    leg.innerHTML=['大型→红','中型→橙','小型→绿','微型→蓝'].map(t=>'<div class="legend-item">'+t+'</div>').join('');
+  } else {
+    leg.innerHTML=['>5000万→红','1000-5000万→橙','100-1000万→绿','<100万→灰'].map(t=>'<div class="legend-item">'+t+'</div>').join('');
+  }
+}
+
+// ---- Tabs ----
+const TABS=[
+  {key:'tOverview',name:'📊 总览',mod:null},
+  {key:'tCluster',name:'🗺️ 集群象限',mod:'cluster'},
+  {key:'tVitality',name:'📈 产业活力',mod:'vitality'},
+  {key:'tLQ',name:'📊 LQ专门化',mod:'lq'},
+  {key:'tGrid',name:'🟦 选址网格',mod:'grid'},
+  {key:'tChain',name:'🔗 产业链',mod:'chain'},
+  {key:'tRes',name:'🛡️ 产业韧性',mod:'resilience'},
+  {key:'tMethods',name:'📚 方法与数据',mod:null}
+];
+function buildTabs(){
+  const nav=$('tabNav'), body=$('tabContents');
+  let first=true;
+  TABS.forEach(t=>{
+    if(t.mod && !CONFIG.modules[t.mod])return;
+    const b=document.createElement('button');
+    b.className='tab-btn'+(first?' active':'');
+    b.textContent=t.name; b.dataset.tab=t.key;
+    b.onclick=()=>switchTab(t.key);
+    nav.appendChild(b);
+    const c=document.createElement('div');
+    c.className='tab-content'+(first?' active':'');
+    c.id=t.key; body.appendChild(c);
+    first=false;
+  });
+}
+function switchTab(key){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===key));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.toggle('active',c.id===key));
+  renderChartsFor(key);
+}
+
+// ---- 渲染：总览 ----
+function renderOverview(){
+  const el=$('tOverview'); const d=A.data||{};
+  const stars=(A.clusters||[]).filter(c=>c.quadrant==='★明星').length;
+  const vTop=A.vitality&&A.vitality.items.length?
+    [...A.vitality.items].sort((a,b)=>b.vitality-a.vitality)[0]:null;
+  const lqTop=A.lq&&A.lq.items.length&&A.lq.mode!=='none'?
+    [...A.lq.items].sort((a,b)=>b.lq-a.lq)[0]:null;
+  el.innerHTML=
+  '<div class="kpis">'+
+    '<div class="kpi"><div class="v">'+fmt(d.total)+'</div><div class="l">在业企业（样本）</div></div>'+
+    '<div class="kpi"><div class="v">'+fmt(d.coordValid)+'</div><div class="l">含有效坐标</div></div>'+
+    '<div class="kpi"><div class="v">'+((A.clusters||[]).length||'—')+'</div><div class="l">空间集群数（DBSCAN '+CONFIG.dbscan.eps+'m/'+CONFIG.dbscan.minPts+'）</div></div>'+
+    '<div class="kpi"><div class="v green">'+(stars||'—')+'</div><div class="l">明星集群</div></div>'+
+    (vTop?'<div class="kpi"><div class="v orange">'+vTop.cat+'</div><div class="l">活力最高（'+vTop.vitality.toFixed(2)+'）</div></div>':'')+
+    (lqTop?'<div class="kpi"><div class="v green">'+lqTop.k+'</div><div class="l">LQ最高（'+lqTop.lq.toFixed(2)+'）</div></div>':'')+
+    (A.resilience?'<div class="kpi"><div class="v '+(A.resilience.hhiCapital>A.resilience.uniformRef*3?'red':'orange')+
+      '">'+A.resilience.hhiCapital.toFixed(3)+'</div><div class="l">HHI·资本口径（参照 '+A.resilience.uniformRef.toFixed(3)+'）</div></div>'+
+      '<div class="kpi"><div class="v">CR4 '+(A.resilience.cr4*100).toFixed(0)+'%</div><div class="l">前4家资本集中度</div></div>':'')+
+    (A.vitality&&A.vitality.survivalRate!=null?'<div class="kpi"><div class="v green">'+
+      (A.vitality.survivalRate*100).toFixed(1)+'%</div><div class="l">企业存活率</div></div>':'')+
+    (d.sampled?'<div class="kpi"><div class="v orange">'+(d.sampleRate*100).toFixed(0)+'%</div><div class="l">地图/聚类抽样率</div></div>':'')+
+  '</div>'+
+  (META.ai?
+  '<div class="ai-block">'+
+    '<h4>🤖 AI 综合解读（分析生成时撰写，静态内容）</h4>'+
+    '<p>'+(META.ai.overview||'')+'</p>'+
+    (META.ai.suggestions&&META.ai.suggestions.length?'<h4>关键建议</h4><ol>'+
+      META.ai.suggestions.map(s=>'<li>'+s+'</li>').join('')+'</ol>':'')+
+    (META.ai.risks&&META.ai.risks.length?'<h4 style="color:var(--danger);">风险提示</h4><ul>'+
+      META.ai.risks.map(s=>'<li>'+s+'</li>').join('')+'</ul>':'')+
+  '</div>':'')+
+  '<div class="note">口径提示：工商注册数据反映"注册分布"而非实际经营地；启发式产业分类存在个体误差；小样本结论已就地标注。</div>';
+}
+
+// ---- 渲染：集群象限 ----
+function renderClusterTab(){
+  const el=$('tCluster'); const cls=A.clusters||[];
+  if(!cls.length){el.innerHTML='<div class="note">本次分析未开启集群模块或未形成集群。</div>';return;}
+  const sug={'★明星':'深化专业化，打造标杆园区，引进高端配套','◆成熟':'巩固优势，促进创新升级，引入研发机构',
+    '▲潜力':'加强基础设施，引进龙头企业，构建生态','▽弱势':'重新定位，选择性整合，或转向其他主导产业'};
+  const qcol={'★明星':'#3fb950','◆成熟':'#58a6ff','▲潜力':'#f59e0b','▽弱势':'#f85149'};
+  el.innerHTML=
+  '<div class="chart-grid"><div class="chart-box full">'+
+    '<div class="chart-title">集群象限图（当前实力 × 未来潜力）'+
+    '<span class="tip" data-tip="实力=0.40规模分+0.35资本强度+0.25大中型占比&#10;潜力=0.50新设占比+0.30新设资本强度+0.20密度(log)&#10;切割：'+((A.quadrantCut||{}).mode||'中位数')+'（'+((A.quadrantCut||{}).nClusters||cls.length)+'个集群）">ⓘ</span></div>'+
+    '<div class="chart-wrap" style="height:320px;"><canvas id="cvQuadrant"></canvas></div>'+
+  '</div></div>'+
+  '<table><thead><tr><th>编号</th><th>集群（点击定位）</th><th>所在区县</th><th>企业数</th><th>主导环节</th><th>实力</th><th>潜力</th><th>象限</th><th>建议</th></tr></thead>'+
+  '<tbody id="clusterTable">'+cls.map(c=>
+    '<tr class="rowlink" data-cid="'+c.id+'" onclick="locateCluster(\''+c.id+'\')">'+
+    '<td><b style="color:'+clusterColorOf(c.id)+'">'+c.id+'</b></td>'+
+    '<td>'+(c.label||('集群'+c.id))+'</td><td>'+(c.district||'—')+'</td><td>'+c.n+'</td>'+
+    '<td>'+(c.domSub||c.domInd||'—')+'</td>'+
+    '<td>'+c.strength.toFixed(3)+'</td><td>'+c.potential.toFixed(3)+'</td>'+
+    '<td><span class="tag" style="background:'+qcol[c.quadrant]+'22;color:'+qcol[c.quadrant]+';border:1px solid '+qcol[c.quadrant]+'44;">'+c.quadrant+'</span></td>'+
+    '<td style="color:var(--muted);font-size:11px;">'+(sug[c.quadrant]||'')+'</td></tr>').join('')+
+  '</tbody></table>'+
+  (META.ai&&META.ai.clusters?'<div class="ai-block"><h4>🤖 集群逐条解读</h4>'+
+    Object.entries(META.ai.clusters).map(kv=>'<p><b style="color:'+clusterColorOf(kv[0])+'">'+kv[0]+'</b> '+kv[1]+'</p>').join('')+'</div>':'')+
+  (A.moransI?'<div class="note">Moran\'s I（log资本）= '+A.moransI.value.toFixed(3)+'（p='+A.moransI.p+'，'+A.moransI.note+'）——衡量注册资本的空间自相关；集聚本身由集群内企业占比刻画。</div>':'');
+}
+function locateCluster(id){
+  const cl=(A.clusters||[]).find(c=>c.id===id); if(!cl)return;
+  const old=document.querySelector('#clusterTable tr.members');
+  const same=old&&old.dataset.for===id; if(old)old.remove();
+  if(!same){
+    const ms=(REPORT_DATA.enterprises||[]).filter(e=>e.cluster===id);
+    const tr=document.querySelector('#clusterTable tr[data-cid="'+id+'"]');
+    if(tr){const d=document.createElement('tr');d.className='members';d.dataset.for=id;
+      d.innerHTML='<td colspan="9"><div style="max-height:260px;overflow:auto;"><table><thead><tr><th>企业名称</th><th>子产业</th><th>注册资本(万)</th><th>成立年限</th><th>规模</th></tr></thead><tbody>'+
+        ms.map(e=>'<tr><td>'+(e.name||'-')+'</td><td>'+(e.sub||'-')+'</td><td>'+(e.capital>0?fmt(e.capital):'-')+'</td><td>'+(e.age>0?e.age:'-')+'</td><td>'+(e.scale||'-')+'</td></tr>').join('')+
+        '</tbody></table></div></td>';
+      tr.after(d);}
+    const pts=ms.filter(e=>e.lat!=null).map(e=>toGCJ(e.lat,e.lng));
+    if(pts.length)st.map.flyToBounds(L.latLngBounds(pts).pad(.3),{duration:.6,maxZoom:15});
+  }
+  highlightClusterRow(id);
+}
+function drawQuadrant(){
+  if(st.charts.cvQuadrant||!$('cvQuadrant'))return;
+  const cls=A.clusters||[]; if(!cls.length)return;
+  const qcol={'★明星':'#3fb950','◆成熟':'#58a6ff','▲潜力':'#f59e0b','▽弱势':'#f85149'};
+  const ds=cls.map(c=>({label:c.id+' '+(c.label||''),
+    data:[{x:c.strength,y:c.potential}],backgroundColor:qcol[c.quadrant]+'cc',
+    borderColor:qcol[c.quadrant],borderWidth:2,
+    pointRadius:Math.min(9,Math.max(4,c.n/4)),pointHoverRadius:12}));
+  st.charts.cvQuadrant=new Chart($('cvQuadrant'),{type:'scatter',data:{datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:cls.length<=10,labels:{color:'#8b949e',font:{size:10},boxWidth:10}},
+        tooltip:{callbacks:{label:c=>c.dataset.label+'：实力 '+c.parsed.x.toFixed(2)+' / 潜力 '+c.parsed.y.toFixed(2)}}},
+      scales:{x:{min:0,max:1,title:{display:true,text:'当前综合实力',color:'#8b949e'},grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#8b949e'}},
+        y:{min:0,max:1,title:{display:true,text:'未来发展潜力',color:'#8b949e'},grid:{color:'rgba(255,255,255,.06)'},ticks:{color:'#8b949e'}}}}});
+  const cut=A.quadrantCut;
+  if(cut)setTimeout(()=>{const ch=st.charts.cvQuadrant;if(!ch)return;
+    const xM=ch.scales.x.getPixelForValue(cut.x),yM=ch.scales.y.getPixelForValue(cut.y);
+    const ctx=ch.ctx,{left,right,top,bottom}=ch.chartArea;ctx.save();
+    ctx.strokeStyle='rgba(255,255,255,.18)';ctx.setLineDash([6,4]);ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(xM,top);ctx.lineTo(xM,bottom);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(left,yM);ctx.lineTo(right,yM);ctx.stroke();ctx.restore();},120);
+}
+
+// ---- 渲染：活力 ----
+function renderVitalityTab(){
+  const el=$('tVitality'); const V=A.vitality;
+  if(!V||!V.items||!V.items.length){el.innerHTML='<div class="note">本次分析未开启活力模块或无有效数据。</div>';return;}
+  el.innerHTML=
+  '<div class="chart-grid">'+
+    '<div class="chart-box"><div class="chart-title">产业活力指数（Top10）'+
+    '<span class="tip" data-tip="活力='+V.weights[0]+'%新设率+'+V.weights[1]+'%资本强度(log归一)+'+V.weights[2]+'%集群密度&#10;资本强度采用log变换后归一化（修正极值敏感）">ⓘ</span></div>'+
+    '<div class="chart-wrap"><canvas id="cvVitality"></canvas></div></div>'+
+    '<div class="chart-box"><div class="chart-title">企业年龄分布（生命周期）</div>'+
+    '<div class="chart-wrap"><canvas id="cvLife"></canvas></div></div>'+
+  '</div>'+
+  '<table><thead><tr><th>产业/环节</th><th>企业数</th><th>活力指数</th><th>新设占比(3年)</th><th>平均年龄</th><th>平均资本(万)</th><th>趋势</th></tr></thead>'+
+  '<tbody>'+[...V.items].sort((a,b)=>b.vitality-a.vitality).map(d=>
+    '<tr><td>'+d.cat+(d.small?' <span class="tag" style="background:rgba(210,153,34,.15);color:#d29922;">n&lt;30</span>':'')+'</td>'+
+    '<td>'+d.n+'</td>'+
+    '<td><div style="display:flex;align-items:center;gap:6px;"><span>'+d.vitality.toFixed(3)+'</span>'+
+    '<div style="background:var(--bg);border-radius:3px;height:6px;width:80px;overflow:hidden;">'+
+    '<div style="background:#58a6ff;height:100%;width:'+(d.vitality*100).toFixed(0)+'%;"></div></div></div></td>'+
+    '<td>'+(d.newR*100).toFixed(1)+'%</td><td>'+d.avgAge.toFixed(1)+'年</td><td>'+fmt(Math.round(d.avgCap))+'</td><td>'+d.trend+'</td></tr>').join('')+
+  '</tbody></table>'+
+  (V.survivalRate!=null?'<div class="note">企业存活率（在业/含注销吊销）：'+(V.survivalRate*100).toFixed(1)+'%'+
+    (A.data&&A.data.statusFiltered?'（已剔除非在业 '+A.data.statusFiltered+' 家）':'')+'。</div>':'');
+}
+function drawVitality(){
+  if(st.charts.cvVitality||!$('cvVitality'))return;
+  const items=[...(A.vitality.items||[])].sort((a,b)=>b.vitality-a.vitality).slice(0,10);
+  st.charts.cvVitality=new Chart($('cvVitality'),{type:'bar',
+    data:{labels:items.map(d=>d.cat),datasets:[
+      {label:'活力指数',data:items.map(d=>d.vitality),backgroundColor:'rgba(88,166,255,.7)',borderColor:'#58a6ff',borderWidth:1},
+      {label:'新设占比',data:items.map(d=>d.newR),type:'line',yAxisID:'y2',borderColor:'#3fb950',pointBackgroundColor:'#3fb950',tension:.4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b949e',font:{size:10}}}},
+      scales:{x:{ticks:{color:'#8b949e',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{beginAtZero:true,max:1,ticks:{color:'#8b949e'},grid:{color:'rgba(255,255,255,.05)'}},
+        y2:{position:'right',beginAtZero:true,max:1,ticks:{color:'#3fb950'},grid:{drawOnChartArea:false}}}}});
+  st.charts.cvLife=new Chart($('cvLife'),{type:'bar',
+    data:{labels:['0-3年','3-8年','8-15年','15年+'],datasets:[{label:'企业数量',data:A.vitality.lifecycle,
+      backgroundColor:['rgba(63,185,80,.7)','rgba(88,166,255,.7)','rgba(245,158,11,.7)','rgba(248,81,73,.7)'],
+      borderColor:['#3fb950','#58a6ff','#f59e0b','#f85149'],borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#8b949e'}},y:{beginAtZero:true,ticks:{color:'#8b949e'},grid:{color:'rgba(255,255,255,.05)'}}}}});
+}
+
+// ---- 渲染：LQ ----
+function renderLQTab(){
+  const el=$('tLQ'); if(!el)return; const L=A.lq&&Object.assign({},A.lq,{items:(A.lq.items||[]).filter(d=>A.lq.mode==='none'||d.lq!=null)});
+  if(!L||!L.items||!L.items.length){el.innerHTML='<div class="note">本次分析未开启LQ模块。</div>';return;}
+  if(L.mode==='none'){
+    el.innerHTML='<div class="chart-box full" style="margin-bottom:10px;"><div class="chart-title">本地产业结构占比（LQ 降级展示）</div>'+
+      '<div class="chart-wrap" style="height:220px;"><canvas id="cvLQ"></canvas></div></div>'+
+      '<div class="note" style="color:var(--warn);">⚠ 未提供基准数据：区位商不可计算，仅展示本地结构占比。提供全省/全国基准（企业数口径）后可计算 LQ。</div>'+
+      '<table><thead><tr><th>产业/环节</th><th>企业数</th><th>本地占比</th></tr></thead><tbody>'+
+      L.items.map(d=>'<tr><td>'+d.k+'</td><td>'+d.n+'</td><td>'+(d.localShare*100).toFixed(1)+'%</td></tr>').join('')+'</tbody></table>';
+  } else {
+    el.innerHTML='<div class="chart-box full" style="margin-bottom:10px;">'+
+      '<div class="chart-title">LQ 区位商（基准：'+(L.benchmarkName||'用户基准')+'）'+
+      '<span class="tip" data-tip="LQ=本地占比/基准占比&#10;>1.25 显著优势 | 0.75~1.25 均衡 | <0.75 相对薄弱&#10;类别企业数<30时标注小样本">ⓘ</span></div>'+
+      '<div class="chart-wrap" style="height:220px;"><canvas id="cvLQ"></canvas></div></div>'+
+      '<table><thead><tr><th>产业/环节</th><th>本地企业数</th><th>本地占比</th><th>基准占比</th><th>LQ</th><th>判定</th><th>含义</th></tr></thead><tbody>'+
+      L.items.map(d=>'<tr><td>'+d.k+(d.small?' <span class="tag" style="background:rgba(210,153,34,.15);color:#d29922;">n&lt;30</span>':'')+'</td>'+
+      '<td>'+d.n+'</td><td>'+(d.localShare*100).toFixed(1)+'%</td><td>'+(d.bmShare*100).toFixed(2)+'%</td>'+
+      '<td><b style="color:'+(d.lq>1.25?'#3fb950':d.lq>0.75?'#58a6ff':'#f85149')+'">'+d.lq.toFixed(2)+'</b></td>'+
+      '<td><span class="tag" style="background:'+(d.lq>1.25?'rgba(63,185,80,.13)':d.lq>0.75?'rgba(88,166,255,.13)':'rgba(248,81,73,.13)')+
+      ';color:'+(d.lq>1.25?'#3fb950':d.lq>0.75?'#58a6ff':'#f85149')+'">'+d.level+'</span></td>'+
+      '<td style="color:var(--muted);font-size:11px;">'+(d.lq>1.25?'本地比较优势→重点培育':d.lq>0.75?'与基准相当→正常发展':'存在缺口→考虑招引')+'</td></tr>').join('')+
+      '</tbody></table>'+
+      '<div class="note">基准口径：'+(L.benchmarkName||'')+(L.mode==='builtin'?'（近似结构参考，建议替换为省级精确基准）':'（用户提供的基准数据）')+'。</div>';
+  }
+}
+function drawLQ(){
+  if(st.charts.cvLQ||!$('cvLQ'))return;
+  const L=A.lq&&Object.assign({},A.lq,{items:(A.lq.items||[]).filter(d=>A.lq.mode==='none'||d.lq!=null)}); if(!L)return;
+  if(L.mode==='none'){
+    st.charts.cvLQ=new Chart($('cvLQ'),{type:'bar',
+      data:{labels:L.items.map(d=>d.k),datasets:[{label:'本地占比%',data:L.items.map(d=>+(d.localShare*100).toFixed(1)),
+        backgroundColor:'rgba(88,166,255,.7)',borderColor:'#58a6ff',borderWidth:1}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#8b949e',font:{size:9}}},y:{beginAtZero:true,ticks:{color:'#8b949e'}}}}});
+    return;
+  }
+  const cols=L.items.map(d=>d.lq>1.25?'#3fb950':d.lq>0.75?'#58a6ff':'#f85149');
+  st.charts.cvLQ=new Chart($('cvLQ'),{type:'bar',
+    data:{labels:L.items.map(d=>d.k),datasets:[{label:'LQ',data:L.items.map(d=>d.lq),
+      backgroundColor:cols.map(c=>c+'bb'),borderColor:cols,borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#8b949e',font:{size:9}}},y:{beginAtZero:true,ticks:{color:'#8b949e'}}}}});
+}
+
+// ---- 渲染：网格 ----
+function renderGridTab(){
+  const el=$('tGrid'); if(!el)return; const G=A.grid;
+  if(!G||!G.items||!G.items.length){el.innerHTML='<div class="note">本次分析未开启网格模块或无有效数据。</div>';return;}
+  el.innerHTML=
+  '<div class="chart-box full" style="margin-bottom:10px;"><div class="chart-title">TOP网格各维度得分（网格 '+G.sizeM+'m）'+
+  '<span class="tip" data-tip="得分=0.30交通+0.30人才+0.25集聚+0.15商业&#10;（修正：移除恒定值的用地维度并重标权重；原版本的目标类型选择未接入计算，已移除）">ⓘ</span></div>'+
+  '<div class="chart-wrap" style="height:220px;"><canvas id="cvGrid"></canvas></div></div>'+
+  '<table><thead><tr><th>排名</th><th>中心坐标</th><th>综合得分</th><th>交通</th><th>人才</th><th>集聚</th><th>商业</th><th>企业数</th><th>评级</th></tr></thead>'+
+  '<tbody>'+G.items.slice(0,10).map((g,i)=>
+    '<tr class="rowlink" onclick="st.map.flyTo(toGCJ('+g.lat+','+g.lng+'),14)">'+
+    '<td>G'+(i+1)+'</td><td style="font-family:var(--mono);font-size:11px;">'+g.lat.toFixed(4)+', '+g.lng.toFixed(4)+'</td>'+
+    '<td><b style="color:'+(g.score>.6?'#3fb950':g.score>.35?'#f59e0b':'#f85149')+'">'+g.score.toFixed(3)+'</b></td>'+
+    '<td>'+g.metroScore.toFixed(2)+'</td><td>'+g.uniScore.toFixed(2)+'</td><td>'+g.entScore.toFixed(2)+'</td><td>'+g.comScore.toFixed(2)+'</td>'+
+    '<td>'+g.n+'</td><td><span class="tag" style="background:'+(g.score>.6?'rgba(63,185,80,.13)':g.score>.35?'rgba(245,158,11,.13)':'rgba(248,81,73,.13)')+
+    ';color:'+(g.score>.6?'#3fb950':g.score>.35?'#f59e0b':'#f85149')+'">'+g.grade+'</span></td></tr>').join('')+
+  '</tbody></table>'+
+  '<div class="note">'+(G.note||'')+(G.poiBased?'':'（无POI数据，仅产业集聚维度有效）')+'</div>';
+}
+function drawGrid(){
+  if(st.charts.cvGrid||!$('cvGrid'))return;
+  const top=(A.grid.items||[]).slice(0,8);
+  st.charts.cvGrid=new Chart($('cvGrid'),{type:'bar',
+    data:{labels:top.map((_,i)=>'G'+(i+1)),datasets:[
+      {label:'交通',data:top.map(g=>g.metroScore),backgroundColor:'rgba(6,182,212,.7)'},
+      {label:'人才',data:top.map(g=>g.uniScore),backgroundColor:'rgba(129,140,248,.7)'},
+      {label:'集聚',data:top.map(g=>g.entScore),backgroundColor:'rgba(63,185,80,.7)'},
+      {label:'商业',data:top.map(g=>g.comScore),backgroundColor:'rgba(245,158,11,.7)'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b949e',font:{size:10}}}},
+      scales:{x:{ticks:{color:'#8b949e'}},y:{beginAtZero:true,max:1,ticks:{color:'#8b949e'}}}}});
+}
+
+// ---- 渲染：产业链 ----
+function renderChainTab(){
+  const el=$('tChain'); const C=A.chain;
+  if(!C||!C.links||!C.links.length){el.innerHTML='<div class="note">本次分析未开启产业链模块。</div>';return;}
+  el.innerHTML=
+  '<div class="chart-grid">'+
+    '<div class="chart-box"><div class="chart-title">链条环节覆盖'+
+    '<span class="tip" data-tip="环节得分=0.45数量分(log)+0.35资本分+0.20龙头分&#10;GBT编码映射优先、关键词命中率归一化（修正双重计分与词库规模偏置）">ⓘ</span></div>'+
+    '<div class="chart-wrap"><canvas id="cvChain"></canvas></div></div>'+
+    '<div class="chart-box"><div class="chart-title">产业链完整性雷达</div>'+
+    '<div class="chart-wrap"><canvas id="cvChainR"></canvas></div></div>'+
+  '</div>'+
+  '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="gap-box">'+
+    '<div class="chart-box"><div class="chart-title" style="color:var(--danger);">⚠ 短板环节（招引补链方向）</div>'+
+    (C.missing&&C.missing.length?C.missing.map(l=>'<div class="miss">✕ '+l+'（本地无匹配企业）</div>').join(''):'<div class="str">✓ 链条完整，无明显断点</div>')+'</div>'+
+    '<div class="chart-box"><div class="chart-title" style="color:var(--accent2);">✓ 优势环节</div>'+
+    (C.strong&&C.strong.length?C.strong.map(l=>{const u=C.links.find(x=>x.name===l);
+      return '<div class="str">✓ '+l+'（'+(u?u.n:'-')+'家企业）</div>';}).join(''):'<div style="color:var(--muted)">暂无突出环节</div>')+'</div>'+
+  '</div>'+
+  '<div class="note">匹配方法为经营范围关键词+国标代码启发式，个体企业可能跨环节或漏配，结论建议结合龙头企业访谈校验。</div>';
+}
+function drawChain(){
+  if(st.charts.cvChain||!$('cvChain'))return;
+  const links=A.chain.links;
+  const cols=links.map(l=>l.n===0?'rgba(248,81,73,.8)':l.score>.4?'rgba(63,185,80,.8)':'rgba(88,166,255,.8)');
+  st.charts.cvChain=new Chart($('cvChain'),{type:'bar',
+    data:{labels:links.map(l=>l.name),datasets:[
+      {label:'覆盖得分',data:links.map(l=>l.score),backgroundColor:cols,borderWidth:0},
+      {label:'企业数',data:links.map(l=>l.n),type:'line',borderColor:'#f59e0b',pointBackgroundColor:'#f59e0b',pointRadius:4,tension:.3,yAxisID:'y2'}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#8b949e',font:{size:10}}}},
+      scales:{x:{beginAtZero:true,max:1,ticks:{color:'#8b949e'},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{color:'#8b949e',font:{size:10}},grid:{display:false}},
+        y2:{position:'top',display:false}}}});
+  st.charts.cvChainR=new Chart($('cvChainR'),{type:'radar',
+    data:{labels:links.map(l=>l.name),datasets:[{label:'环节覆盖度',data:links.map(l=>l.score),
+      fill:true,backgroundColor:'rgba(88,166,255,.15)',borderColor:'#58a6ff',
+      pointBackgroundColor:links.map(l=>l.n===0?'#f85149':'#58a6ff'),pointRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{r:{angleLines:{color:'rgba(255,255,255,.1)'},grid:{color:'rgba(255,255,255,.08)'},
+        pointLabels:{color:'#8b949e',font:{size:10}},ticks:{display:false}}}}});
+}
+
+// ---- 渲染：韧性 ----
+function renderResTab(){
+  const el=$('tRes'); const R=A.resilience;
+  if(!R||R.hhiCapital==null){el.innerHTML='<div class="note">本次分析未开启韧性模块。</div>';return;}
+  el.innerHTML=
+  '<div class="chart-grid">'+
+    '<div class="chart-box"><div class="chart-title">集中度对比（双口径 + 均匀参照）'+
+    '<span class="tip" data-tip="HHI=Σ(份额²)；同时输出企业数口径与资本口径&#10;均匀参照=1/类别数（k类完全均匀时的HHI）&#10;CR4=前4家注册资本占比&#10;（修正：不再套用市场份额口径的0.10/0.18绝对阈值）">ⓘ</span></div>'+
+    '<div class="chart-wrap"><canvas id="cvHHI"></canvas></div></div>'+
+    '<div class="chart-box"><div class="chart-title">规模结构</div>'+
+    '<div class="chart-wrap"><canvas id="cvScale"></canvas></div></div>'+
+  '</div>'+
+  '<table><thead><tr><th>指标</th><th>数值</th><th>解读</th></tr></thead><tbody>'+
+  '<tr><td>HHI（企业数口径）</td><td><b>'+R.hhiCount.toFixed(3)+'</b></td>'+
+  '<td style="color:var(--muted);font-size:11px;">相对均匀参照 '+R.uniformRef.toFixed(3)+' 为其 '+(R.hhiCount/R.uniformRef).toFixed(1)+' 倍</td></tr>'+
+  '<tr><td>HHI（资本口径）</td><td><b style="color:'+(R.hhiCapital>R.uniformRef*3?'#f85149':R.hhiCapital>R.uniformRef*1.5?'#f59e0b':'#3fb950')+'">'+R.hhiCapital.toFixed(3)+'</b></td>'+
+  '<td style="color:var(--muted);font-size:11px;">相对均匀参照为其 '+(R.hhiCapital/R.uniformRef).toFixed(1)+' 倍</td></tr>'+
+  '<tr><td>CR4（前4家资本占比）</td><td><b>'+(R.cr4*100).toFixed(1)+'%</b></td><td style="color:var(--muted);font-size:11px;">龙头集中度</td></tr>'+
+  '<tr><td>类别数 k</td><td>'+R.catCount+'</td><td style="color:var(--muted);font-size:11px;">均匀参照 HHI=1/k='+R.uniformRef.toFixed(3)+'</td></tr>'+
+  '<tr><td>主导类别</td><td>'+R.dom+'（'+R.domShare+'%）</td><td style="color:var(--muted);font-size:11px;">占比最高的产业/环节</td></tr>'+
+  '</tbody></table>'+
+  '<div class="note">'+(R.conclusion||'')+(R.scaleMissing>0?' 规模字段缺失率 '+(R.scaleMissing*100).toFixed(0)+'%。':'')+'</div>';
+}
+function drawRes(){
+  if(st.charts.cvHHI||!$('cvHHI'))return;
+  const R=A.resilience;
+  st.charts.cvHHI=new Chart($('cvHHI'),{type:'bar',
+    data:{labels:['HHI·企业数','HHI·资本','CR4·资本','均匀参照(1/k)'],datasets:[{label:'数值',
+      data:[R.hhiCount,R.hhiCapital,R.cr4,R.uniformRef],
+      backgroundColor:['rgba(88,166,255,.7)','rgba(248,81,73,.7)','rgba(245,158,11,.7)','rgba(139,148,158,.5)'],
+      borderColor:['#58a6ff','#f85149','#f59e0b','#8b949e'],borderWidth:1}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{beginAtZero:true,ticks:{color:'#8b949e'}},y:{ticks:{color:'#8b949e',font:{size:10}},grid:{display:false}}}}});
+  const sc=R.scaleCnt||{}; const keys=Object.keys(sc).filter(k=>sc[k]>0);
+  st.charts.cvScale=new Chart($('cvScale'),{type:'pie',
+    data:{labels:keys,datasets:[{data:keys.map(k=>sc[k]),
+      backgroundColor:['rgba(248,81,73,.75)','rgba(245,158,11,.75)','rgba(63,185,80,.75)','rgba(88,166,255,.75)','rgba(139,148,158,.6)'],
+      borderColor:'#161b22',borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{color:'#8b949e',font:{size:10}}}}}});
+}
+
+// ---- 渲染：方法与数据 ----
+function renderMethods(){
+  const el=$('tMethods'); const ds=META.dataSource||{};
+  const levelName={province:'省级（边界显示地市）',city:'市级（边界显示区县）',district:'区县级（边界显示街道/乡镇）'}[(META.region||{}).level]||'';
+  el.innerHTML=
+  '<div class="method-card"><h4>① 空间聚类（DBSCAN，投影坐标修正）</h4>'+
+  '<p>自动发现企业高密度聚集区域，识别噪声点（孤立企业）。聚类后按企业数降序统一编号 C1…Cn，集群以"质心所在区县·主导产业"自动命名，地图仅在每个集群质心放置一个编号徽章。</p>'+
+  '<div class="formula">DBSCAN(eps='+CONFIG.dbscan.eps+'m, minPts='+CONFIG.dbscan.minPts+')\n坐标先做等距圆柱投影（x=lng·111320·cosφ₀, y=lat·110574），距离以米计算</div>'+
+  '<div class="fix-note">✔ 修正：原版以经纬度"度"直接计算欧氏距离，东西向距离被高估约25%（中纬度），本报告已按米制投影重算；原版给每个企业点叠加编号导致重叠，本报告改为质心单一编号。</div></div>'+
+  '<div class="method-card"><h4>② 集群象限（实力 × 潜力）</h4>'+
+  '<div class="formula">实力 = 0.40×规模分 + 0.35×资本强度 + 0.25×大中型占比\n潜力 = 0.50×新设占比 + 0.30×新设资本强度 + 0.20×密度(log(1+n)/log(1+n_max))\n切割：'+((A.quadrantCut||{}).mode||'中位数')+'（'+((A.quadrantCut||{}).nClusters||0)+'个集群）</div>'+
+  '<div class="fix-note">✔ 修正：密度项由 min(1,n/10)（≥10家即满分）改为对数尺度；集群数&lt;4时改用均值切割并提示稳健性。</div></div>'+
+  '<div class="method-card"><h4>③ 产业活力指数</h4>'+
+  '<div class="formula">活力 = '+CONFIG.weights[0]+'%×新设率 + '+CONFIG.weights[1]+'%×资本强度(log归一) + '+CONFIG.weights[2]+'%×集群密度\n存活率 = 在业/(在业+注销+吊销)，作为附加负向信号</div>'+
+  '<div class="fix-note">✔ 修正：资本强度改用 log 变换后归一化（注册资本重尾分布下 min-max 受极值压扁）；年龄由成立日期统一换算，缺失值剔除并披露缺失率。</div></div>'+
+  '<div class="method-card"><h4>④ 区位商 LQ</h4>'+
+  '<div class="formula">LQ = (本地产业占比) / (基准区产业占比)\n>1.25 显著优势 | 0.75~1.25 均衡 | <0.75 相对薄弱；类别 n&lt;30 标注小样本</div>'+
+  '<div class="fix-note">✔ 修正：无基准时不再以"均匀分布"兜底硬算（结果不可解释），降级为本地结构占比展示'+(A.lq&&A.lq.mode==='builtin'?'；本报告使用内置近似基准，建议替换为省级精确基准':'')+'。</div></div>'+
+  '<div class="method-card"><h4>⑤ 选址网格适宜性</h4>'+
+  '<div class="formula">得分 = 0.30×交通 + 0.30×人才 + 0.25×集聚 + 0.15×商业（网格 '+CONFIG.gridSizeM+'m）</div>'+
+  '<div class="fix-note">✔ 修正：移除恒为0.5的"用地条件"维度（原15%权重不改变任何排序）并重标权重；移除未接入计算的"评估目标"选项；网格-企业匹配改为一遍分桶。</div></div>'+
+  '<div class="method-card"><h4>⑥ 产业链诊断</h4>'+
+  '<div class="formula">环节得分 = 0.45×数量分(log) + 0.35×资本分 + 0.20×龙头分\n匹配：GBT 代码映射优先，关键词命中率按环节词库规模归一化</div>'+
+  '<div class="fix-note">✔ 修正：关键词得分原按绝对命中数计分，对词库大的环节有偏，已归一化；"环节存在性"与数量分强相关的双重计分已合并。</div></div>'+
+  '<div class="method-card"><h4>⑦ 产业韧性（HHI 双口径 + CR4）</h4>'+
+  '<div class="formula">HHI = Σ(份额²)，同时输出企业数口径与资本口径\n均匀参照 = 1/k（k个类别完全均匀时的HHI）；CR4 = 前4家资本占比</div>'+
+  '<div class="fix-note">✔ 修正：原版仅用企业数份额并套用市场份额口径的0.10/0.18阈值，语义错位；本报告以均匀参照线的倍数解读，并补充 CR4。</div></div>'+
+  '<div class="method-card"><h4>⑧ 空间自相关（Moran\'s I，辅助）</h4>'+
+  '<div class="formula">'+(A.moransI?('I = '+A.moransI.value.toFixed(3)+'，置换检验 p = '+A.moransI.p+'（'+A.moransI.note+'）'):'I = Σwᵢⱼ(xᵢ-x̄)(xⱼ-x̄) / Σ(xᵢ-x̄)²，k近邻行标准化，置换检验')+'</div>'+
+  '<div class="fix-note">✔ 修正：检验对象为 log 注册资本的空间自相关；全样本/网格聚合计算（原版取前500家非随机抽样且无显著性检验）。</div></div>'+
+  '<div class="method-card"><h4>📋 数据来源与口径</h4>'+
+  '<table><tbody>'+
+  '<tr><td>分析区域</td><td>'+((META.region||{}).province||'')+' '+((META.region||{}).city||'')+' '+((META.region||{}).district||'')+'（adcode '+((META.region||{}).adcode||'-')+'，'+levelName+'）</td></tr>'+
+  '<tr><td>目标产业</td><td>'+((META.industry||{}).name||'-')+'（'+((META.industry||{}).type||'')+'）</td></tr>'+
+  '<tr><td>数据来源</td><td>'+(ds.note||'-')+'</td></tr>'+
+  '<tr><td>数据规模</td><td>检索 '+fmt(ds.total)+' → 去重后 '+fmt(ds.afterDedup)+' 家；坐标覆盖率 '+((ds.coordCoverage!=null)?(ds.coordCoverage*100).toFixed(0)+'%':'-')+'；在业 '+fmt((ds.statusDist||{})['在业'])+' 家</td></tr>'+
+  '<tr><td>拉取关键词</td><td style="font-size:11px;">'+((ds.keywords||[]).join('、')||'-')+'</td></tr>'+
+  '<tr><td>拉取时间</td><td>'+(ds.fetchedAt||'-')+'</td></tr>'+
+  '<tr><td>企业坐标系</td><td>'+CONFIG.coordSys.toUpperCase()+'（叠加高德底图前自动转换）</td></tr>'+
+  '<tr><td>报告生成</td><td>'+(META.generatedAt||'-')+' · industry-analysis skill</td></tr>'+
+  '</tbody></table>'+
+  '<div class="note">🔒 安全说明：本报告为静态交付物，不包含任何 API 凭证或密钥；数据拉取所用凭证仅在生成过程中的会话内存内使用，不随报告保存。<br>'+
+  '⚠ 局限声明：1）工商注册口径反映"注册分布"而非实际经营分布；2）关键词/GBT启发式分类存在误差；3）LQ 与基准口径（企业数 vs 产值/就业）不同，仅反映相对结构；4）小样本（类别&lt;30家、集群&lt;4个）结论稳健性有限，已就地标注。'+
+  (boundaryNote?'<br>⚠ '+boundaryNote:'')+'</div></div>';
+}
+
+// ---- 图表调度 ----
+function renderChartsFor(key){
+  if(key==='tCluster')drawQuadrant();
+  else if(key==='tVitality')drawVitality();
+  else if(key==='tLQ')drawLQ();
+  else if(key==='tGrid')drawGrid();
+  else if(key==='tChain')drawChain();
+  else if(key==='tRes')drawRes();
+}
+
+// ---- 头部与启动 ----
+function renderHeader(){
+  $('hTitle').textContent=META.title||'产业智能分析报告';
+  const r=META.region||{}, ind=META.industry||{};
+  $('hSub').textContent='生成于 '+(META.generatedAt||'-')+' · 数据来源：'+((META.dataSource||{}).note||'-')+
+    ' · 企业坐标系 '+CONFIG.coordSys.toUpperCase();
+  const b=[];
+  b.push('<span class="badge b-region">📍 '+[r.province,r.city,r.district].filter(Boolean).join(' · ')+'</span>');
+  if(ind.name)b.push('<span class="badge b-ind">🏭 '+ind.name+'</span>');
+  if(META.demo)b.push('<span class="badge b-demo">演示数据（虚构企业）</span>');
+  $('hBadges').innerHTML=b.join('');
+  if(META.warnings&&META.warnings.length){
+    const wb=$('warnBar');
+    wb.style.display='block';
+    wb.innerHTML='⚠ '+META.warnings.join('　⚠ ');
+  }
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  renderHeader();
+  buildTabs();
+  renderOverview();
+  renderClusterTab();
+  renderVitalityTab();
+  renderLQTab();
+  renderGridTab();
+  renderChainTab();
+  renderResTab();
+  renderMethods();
+  initMap();
+  const active=document.querySelector('.tab-content.active');
+  if(active)renderChartsFor(active.id);
+});
+</script>
+</body>
+</html>
